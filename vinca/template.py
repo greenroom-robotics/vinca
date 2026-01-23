@@ -94,6 +94,7 @@ def write_recipe(source, outputs, vinca_conf, single_file=True):
         meta["build"]["post_process"] = post_process_items
         with open("recipe.yaml", "w") as stream:
             file.dump(meta, stream)
+        generate_activation_scripts_for_recipe(recipe_dir=Path("."))
     else:
         for o in outputs:
             file = yaml.YAML()

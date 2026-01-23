@@ -179,6 +179,7 @@ class Distro(object):
 
     # Based on https://github.com/ros-infrastructure/rosdistro/blob/fad8d9f647631945847cb18bc1d1f43008d7a282/src/rosdistro/manifest_provider/github.py#L51C1-L69C29
     # But with the option to specify the name of the package.xml file in case the repo uses a non-standard name
+    # TODO: make this accept paths, and it should also parse more than just package.xml at root, i.e. support multiple packages per repo/project
     def get_package_xml_for_additional_package(self, pkg_info):
         # Build raw GitHub URL for package.xml
         raw_url_base = pkg_info.get("url")

@@ -47,6 +47,7 @@ def create_migration_instructions(arch, packages_to_migrate, trigger_branch):
     ros_prefix = f"ros-{distro_version}"
 
     repodata = get_repodata(url, arch)
+    # TODO: ^ this now can return none
 
     packages = repodata["packages"]
     to_migrate = set()

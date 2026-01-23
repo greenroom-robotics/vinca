@@ -1,0 +1,483 @@
+# =============================================================================
+# vinca.yaml Configuration Specification
+# =============================================================================
+# This file documents all available configuration options for vinca,
+# the rattler-build recipe generator for ROS packages.
+#
+# Vinca is the official tool used by RoboStack to generate conda recipes
+# for ROS distributions (Noetic, Humble, Jazzy, etc.)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REQUIRED FIELDS
+# -----------------------------------------------------------------------------
+
+ros_distro: humble
+# The ROS distribution name to build packages for.
+# Required: Yes
+# Type: string
+# Examples: "humble", "jazzy", "noetic", "iron"
+# Used for: Package naming, environment setup, rosdistro fetching
+
+conda_index:
+  - robostack.yaml
+  - packages-ignore.yaml
+# List of conda metadata index files that map ROS package names to conda package names.
+# Required: Yes
+# Type: list of strings (file paths or URLs)
+# Purpose:
+#   - Maps ROS package dependencies to their conda equivalents
+#   - Specifies which packages to ignore/skip
+#   - Can reference local files or remote URLs
+# Example files contain mappings like:
+#   ros_package_name: conda_package_name
+#   python3-numpy: numpy
+
+patch_dir: patch
+# Directory containing patch files for packages.
+# Required: Yes
+# Type: string (relative or absolute path)
+# Purpose:
+#   - Contains .patch files to modify package sources before build
+#   - Patches named as {package_name}.patch or {package_name}.{platform}.patch
+# Platform-specific suffixes:
+#   - .osx.patch - macOS only
+#   - .linux.patch - Linux only
+#   - .win.patch - Windows only
+#   - .unix.patch - Both Linux and macOS
+#   - .emscripten.patch - WebAssembly builds
+#   - .any.patch - All platforms
+# Additional files in patch_dir:
+#   - dependencies.yaml - Modify package dependencies
+#   - pkg_additional_info.yaml - Package-specific metadata
+
+# -----------------------------------------------------------------------------
+# PACKAGE SELECTION FIELDS
+# -----------------------------------------------------------------------------
+
+packages_select_by_deps:
+  - desktop
+  - navigation2
+  - moveit
+  - if: linux
+    then:
+      - socketcan_bridge
+      - v4l2_camera
+  - if: not win
+    then:
+      - pcl_ros
+# Packages to build along with all their dependencies.
+# Required: No (but usually needed unless build_all: true)
+# Type: list of strings or conditional objects
+# Purpose:
+#   - Specifies root packages to build
+#   - Dependencies are automatically resolved and included
+#   - Supports platform-specific selections using if/then/else selectors
+# Platform selectors available:
+#   - OS: linux, osx, win, unix, emscripten, wasi, freebsd, zos
+#   - Arch: x86, x86_64, aarch64, arm64, armv6l, armv7l, ppc64, ppc64le, s390x, riscv32, riscv64, wasm32
+#   - Operators: not, and, or
+# Examples:
+#   - if: linux and x86_64
+#   - if: osx or linux
+#   - if: not (win or emscripten)
+
+packages_skip_by_deps:
+  - stage_ros
+  - gazebo_ros_pkgs
+# Packages to skip when resolving dependencies.
+# Required: No
+# Type: list of strings
+# Purpose:
+#   - Used with packages_select_by_deps
+#   - Skips these packages even if they are dependencies
+#   - Useful for packages that don't build on certain platforms
+#   - Package and its dependencies are not built
+
+packages_remove_from_deps:
+  - python-qt-binding
+  - rviz
+# Packages to remove from dependency resolution entirely.
+# Required: No
+# Type: list of strings
+# Purpose:
+#   - Removes packages from the dependency tree
+#   - Unlike packages_skip_by_deps, this affects dependency resolution
+#   - Other packages that depend on these will have the dependency removed
+#   - Useful for removing problematic or unnecessary dependencies
+
+build_all: false
+# Build all packages in the ROS distribution.
+# Required: No
+# Type: boolean
+# Default: false
+# Purpose:
+#   - If true, builds every package in the ROS distribution
+#   - Overrides packages_select_by_deps
+#   - Warning: This can result in thousands of packages
+# Use case: Creating complete ROS distribution builds
+
+# -----------------------------------------------------------------------------
+# BUILD CONFIGURATION FIELDS
+# -----------------------------------------------------------------------------
+
+build_number: 13
+# Default build number for all packages.
+# Required: No
+# Type: integer
+# Default: 0
+# Purpose:
+#   - Incremented when package is rebuilt with same version
+#   - Can be overridden per-package in pkg_additional_info.yaml
+#   - Part of conda package version: {version}-{build_number}
+# Example: version 1.2.3 with build_number 5 becomes "1.2.3-5"
+
+python_version: "3.11"
+# Python version to use for builds.
+# Required: No
+# Type: string (quoted to preserve version)
+# Default: ROS distro default (e.g., "3.10" for Humble)
+# Purpose:
+#   - Sets Python runtime version
+#   - Must match conda ecosystem constraints
+# Common values: "3", "3.10", "3.11", "3.12"
+
+skip_testing: false
+# Whether to skip tests in build scripts.
+# Required: No
+# Type: boolean
+# Default: true
+# Purpose:
+#   - If false, includes test execution in generated recipes
+#   - Tests run during package build process
+#   - Test configurations loaded from tests/{package_name}.yaml
+
+# -----------------------------------------------------------------------------
+# MUTEX PACKAGE CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# Option 1: Simple string format (legacy)
+mutex_package: ros2-distro-mutex
+
+# Option 2: Full dict format (recommended)
+mutex_package:
+  name: ros2-distro-mutex
+  # Package name for the mutex package.
+  # Required: Yes (in dict format)
+  # Type: string
+  # Purpose: Creates a mutex package to ensure version compatibility
+
+  version: "0.7.0"
+  # Version of the mutex package.
+  # Required: Yes (in dict format)
+  # Type: string
+  # Purpose: Mutex package version
+
+  upper_bound: "x.x"
+  # Pin upper bound pattern for version constraints.
+  # Required: Yes (in dict format)
+  # Type: string
+  # Common values:
+  #   - "x.x" - Allow patch version changes (1.2.x)
+  #   - "x" - Allow minor version changes (1.x.x)
+  # Purpose: Controls how strictly package versions are pinned
+
+  build_number: 13
+  # Build number for the mutex package.
+  # Required: No
+  # Type: integer
+  # Default: 0
+
+  run_constraints:
+    - libboost 1.86.*
+    - pcl 1.15.0.*
+    - gazebo 11.*
+    - pybind11-abi 4
+  # Version constraints enforced across all packages.
+  # Required: Yes (in dict format)
+  # Type: list of strings
+  # Purpose:
+  #   - Ensures consistent library versions across ROS packages
+  #   - Prevents ABI incompatibilities
+  #   - Applied as run_constraints in all generated recipes
+  # Format: "package_name version_spec"
+
+# Purpose of mutex packages:
+#   - Ensures all ROS packages in a distro use compatible versions
+#   - Prevents installing packages from different ROS distros together
+#   - Enforces shared library version constraints
+
+# -----------------------------------------------------------------------------
+# SNAPSHOT AND SOURCE CONTROL
+# -----------------------------------------------------------------------------
+
+rosdistro_snapshot: rosdistro_snapshot.yaml
+# Path to rosdistro snapshot YAML file.
+# Required: No
+# Type: string (file path)
+# Purpose:
+#   - Locks specific git tags/revisions for packages
+#   - Ensures reproducible builds
+#   - Overrides versions from rosdistro
+# File format (per package):
+#   package_name:
+#     url: https://github.com/ros/ros_comm.git
+#     version: 1.16.0
+#     tag: 1.16.0  # or 'rev: abc123def456' for commit hash
+# Can also include packages not in rosdistro
+
+rosdistro_additional_recipes: rosdistro_additional_recipes.yaml
+# Path to additional packages not in rosdistro.
+# Required: No
+# Type: string (file path)
+# Purpose:
+#   - Add custom packages not in official rosdistro
+#   - Merged with rosdistro_snapshot
+#   - Supports monorepos with subdirectories
+# File format (per package):
+#   package_name:
+#     url: https://github.com/user/repo.git
+#     version: 2.0.0
+#     rev: abc123def456  # or 'tag: v2.0.0'
+#     package_xml_name: package.xml  # optional, default: package.xml
+#     additional_folder: subfolder  # optional, for monorepos
+# Note: Merged into same structure as rosdistro_snapshot
+
+# -----------------------------------------------------------------------------
+# SKIP/REBUILD CONTROL
+# -----------------------------------------------------------------------------
+
+skip_existing:
+  - https://conda.anaconda.org/robostack-humble/
+  - https://conda.anaconda.org/robostack-staging/
+  - /path/to/local/repodata.json
+# URLs or paths to conda repositories to check for existing packages.
+# Required: No
+# Type: list of strings (URLs or file paths)
+# Purpose:
+#   - Skips building packages that already exist in these repositories
+#   - Saves build time by avoiding rebuilds
+#   - Can reference remote conda channels or local repodata.json files
+# Behavior:
+#   - Fetches repodata.json from each URL
+#   - Checks if package name (and version if trigger_new_versions=true) exists
+#   - Skips package if found
+
+trigger_new_versions: false
+# Rebuild packages when version changes.
+# Required: No
+# Type: boolean
+# Default: false
+# Purpose:
+#   - Controls skip_existing behavior
+#   - If false: Skip if package NAME exists (ignores version)
+#   - If true: Skip only if NAME and VERSION match
+# Use cases:
+#   - false: Incremental builds, skip already-built packages
+#   - true: Rebuild when upstream versions change
+
+# -----------------------------------------------------------------------------
+# CI/CD CONFIGURATION
+# -----------------------------------------------------------------------------
+
+build_in_own_azure_stage:
+  - ros-humble-moveit
+  - ros-humble-gazebo-ros-pkgs
+  - ros-humble-perception
+# Packages that should build in their own CI stage.
+# Required: No
+# Type: list of strings (full conda package names)
+# Purpose:
+#   - Used by vinca-gha, vinca-azure, vinca-glab
+#   - Isolates large/complex packages in separate pipeline stages
+#   - Prevents CI timeouts
+#   - Allows parallel builds of independent stages
+# Note: Use full conda package name with prefix (ros-{distro}-{package})
+
+# -----------------------------------------------------------------------------
+# ADVANCED CONFIGURATION FILES
+# -----------------------------------------------------------------------------
+
+# The following files are referenced from patch_dir and provide
+# additional configuration capabilities:
+
+# 1. dependencies.yaml (in patch_dir/)
+# ---
+# Purpose: Modify package dependencies
+# Location: {patch_dir}/dependencies.yaml
+# Format per package:
+#   package_name:
+#     add_build: [cmake, pkg-config]  # Add build dependencies
+#     remove_build: [old_dep]  # Remove build dependencies
+#     add_host: [boost, eigen]  # Add host dependencies
+#     remove_host: [old_host_dep]  # Remove host dependencies
+#     add_run: [python-numpy]  # Add runtime dependencies
+#     remove_run: [old_run_dep]  # Remove runtime dependencies
+# Dependency types:
+#   - build: Tools needed to build (cmake, compilers)
+#   - host: Libraries to link against
+#   - run: Runtime dependencies
+
+# 2. pkg_additional_info.yaml (in patch_dir/)
+# ---
+# Purpose: Per-package build configuration
+# Location: {patch_dir}/pkg_additional_info.yaml
+# Format per package:
+#   package_name:
+#     build_number: 5  # Override default build_number
+#     additional_cmake_args: "-DFOO=BAR -DBAZ=QUX"  # Extra CMake flags
+#     generate_dummy_package_with_run_deps:  # Create virtual package
+#       dependency_name: actual_conda_package
+#       upper_bound: "x.x"
+#       override_version: "1.2.3"
+
+# 3. tests/{package_name}.yaml
+# ---
+# Purpose: Test configurations for packages
+# Location: tests/{package_name}.yaml
+# Used when skip_testing: false
+# Format: Test commands and requirements
+
+# -----------------------------------------------------------------------------
+# PLATFORM SELECTORS (Advanced)
+# -----------------------------------------------------------------------------
+
+# Vinca supports rattler-build v1 selectors using if/then/else syntax
+# anywhere in the YAML file. This allows platform-specific configuration.
+
+# Examples:
+
+# Conditional package selection:
+packages_select_by_deps_example:
+  - common_package
+  - if: linux
+    then:
+      - linux_only_package
+  - if: osx
+    then:
+      - macos_only_package
+  - if: win
+    then:
+      - windows_only_package
+  - if: not win
+    then:
+      - unix_package
+
+# Complex conditions:
+complex_selector_example:
+  - if: linux and x86_64
+    then:
+      - performance_optimized_package
+  - if: osx or (linux and aarch64)
+    then:
+      - arm_compatible_package
+  - if: not (win or emscripten)
+    then:
+      - posix_only_package
+
+# Available platform variables:
+# OS types:
+#   - linux: Linux systems
+#   - osx: macOS systems
+#   - win: Windows systems
+#   - unix: Linux or macOS (posix systems)
+#   - emscripten: WebAssembly/Emscripten builds
+#   - wasi: WebAssembly System Interface
+#   - freebsd: FreeBSD systems
+#   - zos: z/OS systems
+
+# Architecture types:
+#   - x86: 32-bit x86
+#   - x86_64: 64-bit x86 (amd64)
+#   - aarch64: 64-bit ARM
+#   - arm64: ARM 64-bit (alias for aarch64)
+#   - armv6l: ARM v6 (Raspberry Pi Zero/1)
+#   - armv7l: ARM v7 (Raspberry Pi 2/3)
+#   - ppc64: PowerPC 64-bit
+#   - ppc64le: PowerPC 64-bit little-endian
+#   - s390x: IBM System z
+#   - riscv32: RISC-V 32-bit
+#   - riscv64: RISC-V 64-bit
+#   - wasm32: WebAssembly 32-bit
+
+# Special variables:
+#   - target_platform: Full platform string (e.g., "linux-64", "osx-arm64", "win-64")
+
+# Logical operators:
+#   - and: Both conditions must be true
+#   - or: Either condition must be true
+#   - not: Negates the condition
+#   - Parentheses () for grouping
+
+# -----------------------------------------------------------------------------
+# COMPLETE MINIMAL EXAMPLE
+# -----------------------------------------------------------------------------
+
+# Minimal vinca.yaml:
+# ---
+# ros_distro: humble
+# conda_index:
+#   - robostack.yaml
+# patch_dir: patch
+# packages_select_by_deps:
+#   - ros_core
+
+# -----------------------------------------------------------------------------
+# COMPLETE FULL EXAMPLE
+# -----------------------------------------------------------------------------
+
+# Full-featured vinca.yaml:
+# ---
+# ros_distro: humble
+# build_number: 13
+# python_version: "3.11"
+# skip_testing: false
+#
+# conda_index:
+#   - robostack.yaml
+#   - packages-ignore.yaml
+#
+# patch_dir: patch
+#
+# rosdistro_snapshot: rosdistro_snapshot.yaml
+# rosdistro_additional_recipes: rosdistro_additional_recipes.yaml
+#
+# skip_existing:
+#   - https://conda.anaconda.org/robostack-humble/
+#
+# trigger_new_versions: false
+#
+# mutex_package:
+#   name: ros2-distro-mutex
+#   version: "0.7.0"
+#   upper_bound: "x.x"
+#   build_number: 13
+#   run_constraints:
+#     - libboost 1.86.*
+#     - pcl 1.15.0.*
+#
+# packages_select_by_deps:
+#   - desktop
+#   - navigation2
+#   - if: linux
+#     then:
+#       - socketcan_bridge
+#
+# packages_skip_by_deps:
+#   - stage_ros
+#
+# build_in_own_azure_stage:
+#   - ros-humble-moveit
+
+# -----------------------------------------------------------------------------
+# REAL-WORLD EXAMPLES
+# -----------------------------------------------------------------------------
+
+# For real production examples, see:
+# - ROS 2 Humble: https://github.com/RoboStack/ros-humble/blob/main/vinca.yaml
+# - ROS 2 Jazzy: https://github.com/RoboStack/ros-jazzy/blob/main/vinca.yaml
+# - ROS 1 Noetic: https://github.com/RoboStack/ros-noetic/
+
+# =============================================================================
+# END OF SPECIFICATION
+# =============================================================================

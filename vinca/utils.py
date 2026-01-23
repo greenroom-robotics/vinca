@@ -44,8 +44,13 @@ def get_repodata(url_or_path, platform=None):
         url_or_path += f"{platform}/repodata.json"
 
     if "://" not in url_or_path:
-        with open(url_or_path) as fi:
-            return json.load(fi)
+        try:
+            with open(url_or_path) as fi:
+                return json.load(fi)
+        except FileNotFoundError:
+            print(f"Skippping not found repodata at {url_or_path}")
+            return None
+
     print("Downloading repodata from ", url_or_path)
 
     m = hashlib.md5(url_or_path.encode("utf-8")).hexdigest()[:10]

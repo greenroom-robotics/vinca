@@ -823,7 +823,8 @@ def get_selected_packages(distro, vinca_conf):
             for i in vinca_conf["packages_skip_by_deps"]:
                 print(f"Calling replace on {i}.")
                 skipped_packages = skipped_packages.union([i, i.replace("-", "_")])
-        print("Skipped pkgs: ", skipped_packages)
+        if skipped_packages:
+            print("Skipped pkgs: ", skipped_packages)
         for i in vinca_conf["packages_select_by_deps"]:
             i = i.replace("-", "_")
             selected_packages = selected_packages.union([i])
@@ -1183,6 +1184,8 @@ def main():
 
                 print(f"Fetching repodata: {fn}")
                 repodata = get_repodata(fn, get_conda_subdir())
+                if not repodata:
+                    continue
                 # currently we don't check the build numbers of local repodatas,
                 # only URLs
                 if "://" in fn:

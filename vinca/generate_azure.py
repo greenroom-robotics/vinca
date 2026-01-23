@@ -131,8 +131,8 @@ def get_skip_existing(vinca_conf, platform):
 
     for fn in fns:
         print(f"Fetching repodata: {fn}")
-        repodata = get_repodata(fn, platform)
-        repodatas.append(repodata)
+        if repodata := get_repodata(fn, platform):
+            repodatas.append(repodata)
 
     return repodatas
 

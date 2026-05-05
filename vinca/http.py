@@ -23,10 +23,15 @@ def _auth_headers(url):
     return {}
 
 
-def fetch(url, *, timeout=30.0):
-    resp = requests.get(url, headers=_auth_headers(url), timeout=timeout)
-    if resp.status_code in (401, 403):
-        host = urllib.parse.urlparse(url).hostname or ""
+def fetch(url, *, headers=None, timeout=30.0):
+    merged_headers = _auth_headers(url)
+    if headers:
+        merged_headers.update(headers)
+    resp = requests.get(url, headers=merged_headers, timeout=timeout)
+    host = urllib.parse.urlparse(url).hostname or ""
+    if resp.status_code in (401, 403) or (
+        resp.status_code == 404 and host in GITHUB_HOSTS and not _github_token()
+    ):
         hint = ""
         if host in GITHUB_HOSTS and not _github_token():
             hint = (

@@ -1207,6 +1207,22 @@ def main():
                 vinca_conf["skip_built_packages"] = skip_built_packages
         else:
             vinca_conf["skip_built_packages"] = []
+
+        # Honour force_build: subtract named pkgs from the skip set so they get
+        # rebuilt even though skip_existing matched them.
+        force_build = set(vinca_conf.get("force_build") or [])
+        if force_build and vinca_conf["skip_built_packages"]:
+            if vinca_conf["trigger_new_versions"]:
+                vinca_conf["skip_built_packages"] = {
+                    entry for entry in vinca_conf["skip_built_packages"]
+                    if entry[0] not in force_build
+                }
+            else:
+                vinca_conf["skip_built_packages"] = (
+                    vinca_conf["skip_built_packages"] - force_build
+                )
+            print("force_build: removed from skip set:", force_build)
+
         print("Skip built packages!", vinca_conf["skip_built_packages"])
         python_version = None
         if "python_version" in vinca_conf:

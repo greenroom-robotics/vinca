@@ -5,9 +5,10 @@ schema with the `[package.metadata.ros]` table that the vinca pixi shim
 reads. Use it for editor completion and validation in any pixi.toml
 that backs a ROS conda package.
 
-## Wiring it up
+It's a standard JSON Schema (draft 2020-12), so any TOML LSP that
+supports JSON Schema will work — tombi, taplo (Even Better TOML), etc.
 
-We use [tombi](https://github.com/tombi-toml/tombi) as the TOML LSP.
+## Wiring it up
 
 ### Per-file `#:schema` directive
 
@@ -17,15 +18,14 @@ Add this as the first line of the source repo's `pixi.toml`:
 #:schema https://raw.githubusercontent.com/Greenroom-Robotics/vinca/master/vinca/schemas/greenroom_pixi_manifest.schema.json
 ```
 
-Tombi picks it up automatically. Pin to a tag or commit SHA instead of
-`master` when you want stable behavior.
+Most TOML LSPs pick this up automatically. Pin to a tag or commit SHA
+instead of `master` when you want stable behavior.
 
-### Repo-wide via `tombi.toml`
+### Repo-wide config
 
-For multi-package repos, put a `tombi.toml` at the repo root pointing
-all relevant manifests at the schema. See the tombi docs for the
-current config format — the per-file directive above works without any
-extra config and is the simplest place to start.
+For multi-package repos, configure your LSP to apply the schema to all
+manifests at once. The exact config file and syntax depends on the LSP
+you're using — see your LSP's docs for schema mapping.
 
 ## What it covers
 

@@ -1207,6 +1207,29 @@ def main():
                 vinca_conf["skip_built_packages"] = skip_built_packages
         else:
             vinca_conf["skip_built_packages"] = []
+
+        # Honour force_build: subtract named pkgs from the skip set so they get
+        # rebuilt even though skip_existing matched them. Skip set entries are
+        # conda-prefixed (e.g. "ros-kilted-std-msgs"), so translate the bare
+        # ROS names ("std_msgs") in `force_build` to match.
+        force_build = vinca_conf.get("force_build") or []
+        ros_distro = vinca_conf.get("ros_distro", "")
+        force_build_conda = {
+            f"ros-{ros_distro}-{name.replace('_', '-')}"
+            for name in force_build
+        }
+        skip = set(vinca_conf["skip_built_packages"] or ())
+        if force_build_conda and skip:
+            if vinca_conf["trigger_new_versions"]:
+                skip = {
+                    entry for entry in skip
+                    if entry[0] not in force_build_conda
+                }
+            else:
+                skip -= force_build_conda
+            vinca_conf["skip_built_packages"] = skip
+            print("force_build: removed from skip set:", force_build_conda)
+
         print("Skip built packages!", vinca_conf["skip_built_packages"])
         python_version = None
         if "python_version" in vinca_conf:

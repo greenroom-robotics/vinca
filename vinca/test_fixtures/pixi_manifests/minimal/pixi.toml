@@ -11,5 +11,5 @@ python = "*"
 [package.run-dependencies]
 python = "*"
 
-[package.metadata.ros]
+[tool.ros]
 build_type = "ament_python"

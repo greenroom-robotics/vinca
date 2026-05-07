@@ -1,4 +1,4 @@
 [package]
 name = "x"
 version = "0.0.1"
-[package.metadata.ros]
+[tool.ros]

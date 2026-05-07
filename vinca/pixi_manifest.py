@@ -192,23 +192,23 @@ def parse_pixi_package_string(
     license_ = _require_str(pkg_raw.get("license", ""), "license", source)
     authors_raw = _require_str_list(pkg_raw.get("authors", []), "[package].authors", source)
 
-    metadata = pkg_raw.get("metadata", {})
-    ros_meta_raw = metadata.get("ros", {}) if isinstance(metadata, dict) else {}
+    tool_raw = raw.get("tool", {})
+    ros_meta_raw = tool_raw.get("ros", {}) if isinstance(tool_raw, dict) else {}
     if not isinstance(ros_meta_raw, dict):
-        raise KeyError(f"{source}: [package.metadata.ros] must be a table")
+        raise KeyError(f"{source}: [tool.ros] must be a table")
 
     if "build_type" not in ros_meta_raw:
         raise KeyError(
-            f"{source}: [package.metadata.ros].build_type is required "
+            f"{source}: [tool.ros].build_type is required "
             "(e.g. 'ament_cmake', 'ament_python', 'ament_cargo')"
         )
     build_type = _require_str(
-        ros_meta_raw["build_type"], "metadata.ros.build_type", source
+        ros_meta_raw["build_type"], "tool.ros.build_type", source
     )
 
     test = _require_str_dict(
         ros_meta_raw.get("test_dependencies", {}),
-        "[package.metadata.ros.test_dependencies]",
+        "[tool.ros.test_dependencies]",
         source,
     )
     is_message_package = bool(ros_meta_raw.get("is_message_package", False))

@@ -103,7 +103,7 @@ def test_dep_in_both_host_and_run_appears_in_both_slots() -> None:
         'ros-kilted-rclcpp = "*"\n'
         '[package.run-dependencies]\n'
         'ros-kilted-rclcpp = "*"\n'
-        '[package.metadata.ros]\n'
+        '[tool.ros]\n'
         'build_type = "ament_cmake"\n'
     )
     pkg: Package = parse_pixi_package(fixture, ros_distro="kilted")
@@ -141,7 +141,7 @@ def test_unconstrained_dep_has_no_version_fields() -> None:
         'ranged = ">=2.5,<3"\n'
         'just_lower = ">1.0"\n'
         'just_upper = "<=4"\n'
-        '[package.metadata.ros]\n'
+        '[tool.ros]\n'
         'build_type = "ament_python"\n'
     )
     pkg = parse_pixi_package(fixture, ros_distro="kilted")
@@ -186,7 +186,7 @@ def test_unsupported_version_spec_raises() -> None:
         'version = "0.1.0"\n'
         '[package.run-dependencies]\n'
         'wildcarded = "1.2.*"\n'
-        '[package.metadata.ros]\n'
+        '[tool.ros]\n'
         'build_type = "ament_python"\n'
     )
     with pytest.raises(ValueError, match="wildcarded"):
@@ -209,7 +209,7 @@ def test_parse_string_round_trips_to_same_package() -> None:
 
 def test_parse_string_uses_source_in_errors() -> None:
     """When parsing fails, error messages should reference the supplied source label."""
-    bad = '[package]\nname = "x"\nversion = "0.0.1"\n[package.metadata.ros]\n'
+    bad = '[package]\nname = "x"\nversion = "0.0.1"\n[tool.ros]\n'
     with pytest.raises(KeyError, match="github.com/foo/bar"):
         parse_pixi_package_string(bad, ros_distro="kilted", source="github.com/foo/bar")
 
@@ -257,7 +257,7 @@ def test_missing_build_type_raises() -> None:
         '[package]\n'
         'name = "x"\n'
         'version = "0.0.1"\n'
-        '[package.metadata.ros]\n'
+        '[tool.ros]\n'
     )
     with pytest.raises(KeyError, match="build_type"):
         parse_pixi_package(bad, ros_distro="kilted")

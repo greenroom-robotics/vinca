@@ -2,30 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Greenroom-Robotics/vinca/master/vinca/schemas/greenroom_pixi_manifest.schema.json",
   "title": "Greenroom pixi.toml (ROS)",
-  "description": "Pixi manifest schema extended with the [package.metadata.ros] table consumed by the vinca pixi shim. Use as the schema for any pixi.toml that backs a ROS conda package.",
-  "allOf": [
-    { "$ref": "https://pixi.sh/latest/schema/manifest/schema.json" },
-    { "$ref": "#/$defs/RosExtension" }
-  ],
-  "$defs": {
-    "RosExtension": {
+  "description": "Pixi manifest schema extended with the [tool.ros] table consumed by the vinca pixi shim. Pixi only honors third-party metadata under [tool.*], so the ROS-specific fields live there. Use as the schema for any pixi.toml that backs a ROS conda package. See SCHEMA_NOTES.md for the rationale.",
+
+  "type": "object",
+  "required": ["tool"],
+  "properties": {
+    "tool": {
       "type": "object",
+      "required": ["ros"],
       "properties": {
-        "package": {
-          "type": "object",
-          "properties": {
-            "metadata": {
-              "type": "object",
-              "properties": {
-                "ros": { "$ref": "#/$defs/RosMetadata" }
-              },
-              "required": ["ros"]
-            }
-          },
-          "required": ["metadata"]
-        }
+        "ros": { "$ref": "#/$defs/RosMetadata" }
       }
-    },
+    }
+  },
+
+  "$defs": {
     "RosMetadata": {
       "type": "object",
       "title": "ROS-specific metadata",

@@ -5,5 +5,5 @@ version = "0.1.0"
 ros-kilted-rclcpp = "*"
 [package.run-dependencies]
 ros-kilted-rclcpp = "*"
-[package.metadata.ros]
+[tool.ros]
 build_type = "ament_cmake"

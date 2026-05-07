@@ -11,6 +11,6 @@ ros-kilted-rosidl-default-generators = "*"
 [package.run-dependencies]
 ros-kilted-rosidl-default-runtime = "*"
 
-[package.metadata.ros]
+[tool.ros]
 build_type = "ament_cmake"
 is_message_package = true

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Greenroom-Robotics/vinca/master/vinca/schemas/greenroom_pixi_manifest.schema.json",
+  "title": "Greenroom pixi.toml (ROS)",
+  "description": "Pixi manifest schema extended with the [package.metadata.ros] table consumed by the vinca pixi shim. Use as the schema for any pixi.toml that backs a ROS conda package.",
+  "allOf": [
+    { "$ref": "https://pixi.sh/latest/schema/manifest/schema.json" },
+    { "$ref": "#/$defs/RosExtension" }
+  ],
+  "$defs": {
+    "RosExtension": {
+      "type": "object",
+      "properties": {
+        "package": {
+          "type": "object",
+          "properties": {
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "ros": { "$ref": "#/$defs/RosMetadata" }
+              },
+              "required": ["ros"]
+            }
+          },
+          "required": ["metadata"]
+        }
+      }
+    },
+    "RosMetadata": {
+      "type": "object",
+      "title": "ROS-specific metadata",
+      "description": "Vinca-shim-specific package metadata. Drives the generated package.xml when this pixi.toml is consumed as a ROS package manifest.",
+      "additionalProperties": false,
+      "required": ["build_type"],
+      "properties": {
+        "build_type": {
+          "type": "string",
+          "title": "ament build type",
+          "description": "Maps to <export><build_type/></export> in the generated package.xml. Required.",
+          "enum": ["ament_cmake", "ament_python", "ament_cargo"]
+        },
+        "is_message_package": {
+          "type": "boolean",
+          "title": "Message/srv/action package",
+          "description": "If true, the shim emits <buildtool_depend>rosidl_default_generators</buildtool_depend> and <member_of_group>rosidl_interface_packages</member_of_group> so rosidl generators discover this package and produce bindings.",
+          "default": false
+        },
+        "test_dependencies": {
+          "type": "object",
+          "title": "Test dependencies",
+          "description": "Additional deps used during tests. Same shape as [package.run-dependencies] — keys are conda names, values are version specs (`*`, `==X`, `>=X,<Y`, etc.).",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

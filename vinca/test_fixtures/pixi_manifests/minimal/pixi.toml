@@ -5,10 +5,6 @@ description = "A minimal package"
 license = "MIT"
 authors = ["Alice <alice@example.com>"]
 
-[package.build.backend]
-name = "pixi-build-python"
-version = "*"
-
 [package.host-dependencies]
 python = "*"
 

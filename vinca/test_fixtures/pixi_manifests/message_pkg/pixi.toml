@@ -5,10 +5,6 @@ description = "Some msgs"
 license = "MIT"
 authors = ["Carol <carol@example.com>"]
 
-[package.build.backend]
-name = "pixi-build-cmake"
-version = "*"
-
 [package.host-dependencies]
 ros-kilted-rosidl-default-generators = "*"
 

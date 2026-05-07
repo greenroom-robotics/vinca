@@ -5,10 +5,6 @@ description = "Demonstrates dep mapping"
 license = "MIT"
 authors = ["Bob <bob@example.com>"]
 
-[package.build.backend]
-name = "pixi-build-cmake"
-version = "*"
-
 # host-only → build_depends (recipe host:)
 [package.host-dependencies]
 cmake = "*"

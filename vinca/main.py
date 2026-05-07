@@ -471,7 +471,7 @@ def generate_output(pkg_shortname, vinca_conf, distro, version, all_pkgs=None):
     # we stick some build tools into the `build` section to make cross compilation work
     # right now it's only `git`.
     for dep in build_tool_deps:
-        resolved_dep = resolve_pkgname(dep, vinca_conf, distro)
+        resolved_dep = _resolve_dep(dep, pkg, vinca_conf, distro)
         if not resolved_dep:
             unsatisfied_deps.add(dep)
             continue
@@ -495,7 +495,7 @@ def generate_output(pkg_shortname, vinca_conf, distro, version, all_pkgs=None):
             )
 
     for dep in build_deps:
-        resolved_dep = resolve_pkgname(dep, vinca_conf, distro)
+        resolved_dep = _resolve_dep(dep, pkg, vinca_conf, distro)
         if not resolved_dep:
             unsatisfied_deps.add(dep)
             continue
@@ -509,7 +509,7 @@ def generate_output(pkg_shortname, vinca_conf, distro, version, all_pkgs=None):
     run_deps += gdeps
 
     for dep in run_deps:
-        resolved_dep = resolve_pkgname(dep, vinca_conf, distro, is_rundep=True)
+        resolved_dep = _resolve_dep(dep, pkg, vinca_conf, distro, is_rundep=True)
         if not resolved_dep:
             unsatisfied_deps.add(dep)
             continue
@@ -991,6 +991,24 @@ def generate_mutex_package_recipe(vinca_conf, distro):
     return recipe
 
 
+def _resolve_dep(name, pkg, vinca_conf, distro, **kwargs):
+    """Resolve a dep name to conda specs.
+
+    For packages parsed from a pixi.toml, non-ROS dep names already are conda
+    package names — pass them through verbatim. ROS dep names still go via
+    `resolve_pkgname` so the distro prefix and any robostack mappings apply.
+    Non-pixi packages (package.xml-sourced or upstream rosdistro) always go
+    through `resolve_pkgname`.
+    """
+    if (
+        pkg.filename
+        and pkg.filename.endswith(".toml")
+        and not distro.check_package(name)
+    ):
+        return [name]
+    return resolve_pkgname(name, vinca_conf, distro, **kwargs)
+
+
 def _parse_manifest(path: str, ros_distro: str):
     """Parse a manifest file as a catkin_pkg.Package.
 
@@ -1075,38 +1093,38 @@ def parse_package(pkg, distro, vinca_conf, path):
 
     for d in pkg["buildtool_depends"]:
         recipe["requirements"]["host"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
 
     for d in pkg["build_depends"]:
         recipe["requirements"]["host"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
 
     for d in pkg["build_export_depends"]:
         recipe["requirements"]["host"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
         recipe["requirements"]["run"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
 
     for d in pkg["buildtool_export_depends"]:
         recipe["requirements"]["host"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
         recipe["requirements"]["run"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
 
     for d in pkg["test_depends"]:
         recipe["requirements"]["host"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
 
     for d in pkg["exec_depends"]:
         recipe["requirements"]["run"].extend(
-            resolve_pkgname(d.name, vinca_conf, distro)
+            _resolve_dep(d.name, pkg, vinca_conf, distro)
         )
 
     if pkg.get_build_type() in ["cmake", "catkin"]:

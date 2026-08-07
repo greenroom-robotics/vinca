@@ -46,9 +46,20 @@ if [[ "$CONDA_BUILD_CROSS_COMPILATION" == "1" ]]; then
   find $PREFIX/lib/cmake -type f -exec sed -i "s~message(FATAL_ERROR \"The imported target~message(WARNING \"The imported target~g" {} + || true
 fi
 
+# -g is appended to the flags instead of switching CMAKE_BUILD_TYPE to
+# RelWithDebInfo: CMake appends CMAKE_<LANG>_FLAGS_RELEASE (-O3 -DNDEBUG) after
+# CMAKE_<LANG>_FLAGS, so the effective compile is -O3 -g
+# conda-forge activation already maps $SRC_DIR and $PREFIX, but not
+# $BUILD_PREFIX, so without that map the toolchain and libstdc++ header paths
+# bake the CI runner's directory layout into the published DWARF.
+# LDFLAGS seeds CMAKE_EXE_LINKER_FLAGS, CMAKE_SHARED_LINKER_FLAGS *and*
+# CMAKE_MODULE_LINKER_FLAGS. The MODULE one matters: rosidl python extensions
+# are built with python3_add_library(... MODULE ...) and would otherwise carry
+# no build-id, making them unresolvable via debuginfod.
 if [[ $target_platform =~ linux.* ]]; then
-    export CFLAGS="${CFLAGS} -D__STDC_FORMAT_MACROS=1"
-    export CXXFLAGS="${CXXFLAGS} -D__STDC_FORMAT_MACROS=1"
+    export CFLAGS="${CFLAGS} -D__STDC_FORMAT_MACROS=1 -g -fdebug-prefix-map=${BUILD_PREFIX}=/usr/local/src/conda-build-prefix"
+    export CXXFLAGS="${CXXFLAGS} -D__STDC_FORMAT_MACROS=1 -g -fdebug-prefix-map=${BUILD_PREFIX}=/usr/local/src/conda-build-prefix"
+    export LDFLAGS="${LDFLAGS} -Wl,--build-id"
 fi;
 
 # Needed for qt-gui-cpp ..
@@ -138,3 +149,48 @@ $CMAKE_GEN \
     $WORK_DIR
 
 $CMAKE_BLD --build . --config $BUILD_TYPE --target install
+
+# Split the debug info off every installed ELF into a build-id keyed tree for a
+# later CI step to push to debuginfod, then strip the shipped binary so the
+# package stays the size it is today.
+#
+# The tree lives under $GR_DEBUGINFO_DIR, never under $PREFIX
+#
+# The read loop needs the `|| [ -n "$f" ]` guard because install_manifest.txt
+# has no trailing newline and a bare `while read` would silently drop the last
+# binary. $OBJCOPY/$READELF are the triplet-prefixed tools exported by conda's
+# binutils activation; the bare-name fallbacks keep this working outside a
+# conda build. No --add-gnu-debuglink: the debug file is named `debuginfo`, so
+# a debuglink would only record a useless basename - the build-id is the key.
+# `executable` is copied after stripping so it is byte-identical to what we
+# ship, which is what a core dump has to be matched against.
+if [[ $target_platform =~ linux.* ]]; then
+  debug_dir="${GR_DEBUGINFO_DIR:-/tmp/gr-debuginfo}"
+  # Warnings go to a file as well as stderr. rattler-build indents build output
+  # with box-drawing prefixes, so a `::warning::` emitted from in here never
+  # starts at column 0 and GitHub will not parse it; the upload step reads this
+  # file and re-emits the annotations from the job shell instead.
+  _warn() { echo "WARNING: $1" >&2; mkdir -p "$debug_dir"; echo "$PKG_NAME: $1" >>"$debug_dir/warnings.log"; }
+
+  if [ ! -f install_manifest.txt ]; then
+    # nothing to the symbol store, and a green build would otherwise hide that.
+    _warn "no install_manifest.txt; no debug symbols captured"
+  else
+      debug_root="$debug_dir/buildid"
+      _objcopy="${OBJCOPY:-objcopy}"
+      _readelf="${READELF:-readelf}"
+      while IFS= read -r f || [ -n "$f" ]; do
+          [ -f "$f" ] || continue
+          head -c4 "$f" | grep -q $'\x7fELF' || continue
+          id=$("$_readelf" -n "$f" 2>/dev/null | awk '/Build ID:/ {print $NF; exit}')
+          if [ -z "$id" ]; then
+              _warn "no build-id, no symbols will be available: $f"
+              continue
+          fi
+          mkdir -p "$debug_root/$id"
+          "$_objcopy" --only-keep-debug "$f" "$debug_root/$id/debuginfo"
+          "$_objcopy" --strip-debug "$f"
+          cp "$f" "$debug_root/$id/executable"
+      done < install_manifest.txt
+  fi
+fi
